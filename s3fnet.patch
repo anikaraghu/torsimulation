@@ -1,0 +1,73 @@
+diff -rup s3fnet_base_unmod/base/build.sh s3fnet_base/base/build.sh
+--- s3fnet_base_unmod/base/build.sh	2013-08-05 19:29:29.000000000 -0500
++++ s3fnet_base/base/build.sh	2020-05-19 17:47:49.189443198 -0500
+@@ -102,7 +102,7 @@ echo "--------------------------------"
+ cd dml
+ aclocal
+ autoconf
+-automake
++automake --add-missing
+ ./configure
+ make clean
+ make
+diff -rup s3fnet_base_unmod/base/s3fnet/src/os/socket/nb_socket_master.cc s3fnet_base/base/s3fnet/src/os/socket/nb_socket_master.cc
+--- s3fnet_base_unmod/base/s3fnet/src/os/socket/nb_socket_master.cc	2013-08-12 12:49:10.000000000 -0500
++++ s3fnet_base/base/s3fnet/src/os/socket/nb_socket_master.cc	2020-05-19 17:37:29.863096186 -0500
+@@ -331,7 +331,7 @@ int NBSocketMaster::block_till(int sock,
+     SOCK_DUMP(printf("suspend: mask=%08x, state=%08x.\n", mysocket->mask, mysocket->state));
+     mysocket->activate();
+     mysocket->continuation = caller;
+-    return EWOULDBLOCK;
++    return E_WOULD_BLOCK;
+   }
+   else // no blocking, continue to the next stage
+   /*{ // now handled within the calling function itself
+diff -rup s3fnet_base_unmod/base/s3fnet/src/os/socket/nb_socket_master.h s3fnet_base/base/s3fnet/src/os/socket/nb_socket_master.h
+--- s3fnet_base_unmod/base/s3fnet/src/os/socket/nb_socket_master.h	2013-08-12 12:49:10.000000000 -0500
++++ s3fnet_base/base/s3fnet/src/os/socket/nb_socket_master.h	2020-05-19 17:39:42.503598842 -0500
+@@ -90,8 +90,8 @@ class NBSocketMaster : public ProtocolSe
+   enum {
+     ESUCCESS        = 0, /**< Indicates success */
+     EGENERIC        = -1, /**< Indicates generic error */
+-    EWOULDBLOCK     = -2, /**< Function returned because it would otherwise block. */
+-    EINPROGRESS     = -3, /**< Connection is currently in progress. */
++    E_WOULD_BLOCK     = -2, /**< Function returned because it would otherwise block. */
++    E_IN_PROGRESS     = -3, /**< Connection is currently in progress. */
+     ECONNECTED      = -4 /**< Socket is already connected. */
+   };
+ 
+diff -rup s3fnet_base_unmod/base/s3fnet/src/os/tcp/app/nb_tcp_client.cc s3fnet_base/base/s3fnet/src/os/tcp/app/nb_tcp_client.cc
+--- s3fnet_base_unmod/base/s3fnet/src/os/tcp/app/nb_tcp_client.cc	2013-06-29 23:14:34.000000000 -0500
++++ s3fnet_base/base/s3fnet/src/os/tcp/app/nb_tcp_client.cc	2020-05-19 17:38:39.831361339 -0500
+@@ -233,7 +233,7 @@ void NBTCPClientSession::non_blocking_lo
+                  */
+                 caller->status = NBTCPClientSessionContinuation::NB_TCP_CLIENT_STATUS_RECEIVING;
+                 caller->success();
+-            } else if (res != NBSocketMaster::EWOULDBLOCK) {
++            } else if (res != NBSocketMaster::E_WOULD_BLOCK) {
+                 TCP_DUMP(printf("[host=\"%s\"] encountered error %d\n",
+                         inHost()->nhi.toString(),res));
+             }
+diff -rup s3fnet_base_unmod/base/s3fnet/src/os/tcp/app/nb_tcp_server.cc s3fnet_base/base/s3fnet/src/os/tcp/app/nb_tcp_server.cc
+--- s3fnet_base_unmod/base/s3fnet/src/os/tcp/app/nb_tcp_server.cc	2013-08-12 12:49:10.000000000 -0500
++++ s3fnet_base/base/s3fnet/src/os/tcp/app/nb_tcp_server.cc	2020-05-19 17:38:12.307257033 -0500
+@@ -172,7 +172,7 @@ int FileSender::handleIO(NBSocketMaster*
+             mBufUsed += cnt->retval;
+             mBytesSent += cnt->retval;
+         }
+-    } else if(res != NBSocketMaster::EWOULDBLOCK) {
++    } else if(res != NBSocketMaster::E_WOULD_BLOCK) {
+         TCP_DUMP(printf("send failed (error %d, retval = %d)!\n",res,cnt->retval));
+     } else {
+       return 2;
+diff -rup s3fnet_base_unmod/base/s3fnet/src/s3fnet.cc s3fnet_base/base/s3fnet/src/s3fnet.cc
+--- s3fnet_base_unmod/base/s3fnet/src/s3fnet.cc	2013-08-12 12:49:10.000000000 -0500
++++ s3fnet_base/base/s3fnet/src/s3fnet.cc	2020-05-19 17:56:35.928167952 -0500
+@@ -240,5 +240,7 @@ int main(int argc, char** argv)
+   // simulation runtime speed measurement
+   sim_inf.runtime_measurements();
+ 
++
++  exit(0);
+   return 0;
+ }
